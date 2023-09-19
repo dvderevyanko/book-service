@@ -35,6 +35,6 @@ Service uses PostgresSql DB to store books and authors.
 
 `./gradlew cleanDbVolume` removes database state files.
 
-##Swagger
+## Swagger
 
 When application runs the descriptions are be available at the path [/v3/api-docs](http://localhost:8080/v3/api-docs) and [swagger](http://localhost:8080/swagger-ui/index.html)
