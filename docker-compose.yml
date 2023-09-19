@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: "postgres:16"
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_DB: "book_db"
+    volumes:
+      - ./volume:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:6666:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  book-service:
+    image: "book-service:latest"
+    environment:
+      - "SPRING_PROFILES_ACTIVE=compose"
+    ports:
+      - "8080:8080"
+    depends_on:
+        postgres:
+          condition: service_healthy

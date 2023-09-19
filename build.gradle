@@ -1,0 +1,130 @@
+plugins {
+	id 'org.springframework.boot' version '3.1.3'
+	id 'io.spring.dependency-management' version '1.1.3'
+	id 'java'
+	id 'com.bmuschko.docker-spring-boot-application' version '9.3.2'
+}
+
+group = 'com.book'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '18'
+
+ext {
+	mapStructVersion = "1.5.5.Final"
+	lombokVersion = "1.18.24"
+	lombokBindingVersion = "0.2.0"
+	testContainerVersion = "1.19.0"
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+
+	//DB
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.postgresql:postgresql:42.6.0'
+	implementation 'org.liquibase:liquibase-core:4.23.2'
+
+	//Logging
+	implementation 'org.springframework.boot:spring-boot-starter-log4j2'
+
+	// MapStruct
+	implementation "org.mapstruct:mapstruct:$project.mapStructVersion"
+	implementation "org.projectlombok:lombok-mapstruct-binding:$project.lombokBindingVersion"
+	annotationProcessor "org.projectlombok:lombok-mapstruct-binding:$project.lombokBindingVersion"
+	annotationProcessor "org.mapstruct:mapstruct-processor:$project.mapStructVersion"
+
+	// Lombok
+	implementation "org.projectlombok:lombok:$project.lombokVersion"
+	annotationProcessor "org.projectlombok:lombok:$project.lombokVersion"
+
+	// Http
+	implementation 'org.apache.httpcomponents.client5:httpclient5:5.2.1'
+
+	// Swagger
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0'
+
+	// Test
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.mockito:mockito-core:5.5.0'
+	testImplementation "org.testcontainers:testcontainers:$project.testContainerVersion"
+	testImplementation 'org.assertj:assertj-core:3.24.2'
+	testImplementation "org.testcontainers:junit-jupiter:$project.testContainerVersion"
+	testImplementation "org.testcontainers:postgresql:$project.testContainerVersion"
+	testRuntimeOnly "org.testcontainers:jdbc:$project.testContainerVersion"
+}
+
+docker {
+	springBootApplication {
+		baseImage = 'arm64v8/openjdk:18'
+//		baseImage = 'openjdk:18'
+		images = ["$project.name:latest"]
+	}
+}
+
+test {
+	useJUnitPlatform()
+}
+
+sourceSets {
+	integrationTest {
+		java {
+			compileClasspath += main.output + test.output
+			runtimeClasspath += main.output + test.output
+			srcDir file('src/integrationTest/java')
+		}
+	}
+}
+
+configurations {
+	integrationTestCompile.extendsFrom testCompile
+	integrationTestRuntime.extendsFrom testRuntime
+	integrationTestImplementation.extendsFrom testImplementation
+}
+
+tasks.register("integrationTest", Test) {
+	useJUnitPlatform()
+	testClassesDirs = sourceSets.integrationTest.output.classesDirs
+	classpath = sourceSets.integrationTest.runtimeClasspath
+}
+
+configurations.implementation {
+	exclude group: 'org.springframework.boot', module: 'spring-boot-starter-logging'
+}
+
+tasks.register('composeUp', Exec) {
+	group = "application"
+	if (project.hasProperty("withBuild")) {
+		dependsOn("dockerBuildImage")
+	}
+	doFirst {
+		commandLine("docker-compose", "up")
+	}
+}
+
+tasks.register('composeDown', Exec) {
+	group = "application"
+	doFirst {
+		commandLine("docker-compose", "down")
+	}
+}
+
+tasks.register('cleanDbVolume', Delete) {
+	group = "build"
+	doFirst {
+		delete "./volume"
+	}
+}
+
+tasks.register('composeUpDb', Exec) {
+	group = "application"
+	doFirst {
+		if (project.hasProperty("withCleanDb")) {
+			dependsOn("cleanDbVolume")
+		}
+		commandLine("docker-compose", "up", "postgres")
+	}
+}
