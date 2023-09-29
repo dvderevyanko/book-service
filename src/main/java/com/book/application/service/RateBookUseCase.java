@@ -26,7 +26,7 @@ public class RateBookUseCase implements RateBookIPort {
         if (book.getRateCount() == null) {
             int newRate = rate == null ? 0 : rate;
             book.setTotalRate(newRate);
-            book.setRateCount(1);
+            book.setRateCount(0);
             book.setAverageRate(newRate);
         } else {
             book.setTotalRate(book.getTotalRate() + rate);
@@ -49,8 +49,8 @@ public class RateBookUseCase implements RateBookIPort {
 
     @Override
     public Book handle(Long bookId, Integer rate) {
-        Book book = repository.getBookById(bookId).orElseThrow(BookNotFoundException::new);
         validateRate(rate);
+        Book book = repository.getBookById(bookId).orElseThrow(BookNotFoundException::new);
         setRate(book, rate);
         return repository.saveBook(book);
     }
